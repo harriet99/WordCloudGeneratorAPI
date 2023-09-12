@@ -18,9 +18,12 @@ nltk.download('stopwords')
 app = Flask(__name__, static_folder='outputs')
 CORS(app)
 
-def get_tags(text, max_count):
-    # Tokenize and filter out stopwords and non-alphabetic tokens
-    tokens = [word for word in word_tokenize(text) if word.isalpha() and word not in stopwords.words('english')]
+def get_tags(text, max_count, min_length):
+    # Tokenize and filter out stopwords, non-alphabetic tokens, and tokens below the min_length
+    tokens = [word for word in word_tokenize(text)
+              if word.isalpha()
+              and word not in stopwords.words('english')
+              and len(word) >= min_length]
     count = Counter(tokens)
     return dict(count.most_common(max_count))
 
@@ -36,11 +39,11 @@ def make_cloud_image(tags, file_name):
     plt.axis("off")
     fig.savefig("outputs/{0}.png".format(file_name))
 
-def process_from_text(text, max_count, words, file_name):
-    tags = get_tags(text, max_count)
+def process_from_text(text, max_count, min_length, words, file_name):
+    tags = get_tags(text, int(max_count), int(min_length))
     for n, c in words.items():
         if n in tags:
-            tags[n] = tags[n] * int(words[n])
+            tags[n] = tags[n] * float(words[n])
     make_cloud_image(tags, file_name)
 
 @app.route("/process", methods=['GET', 'POST'])
@@ -50,7 +53,7 @@ def process():
     if content['words'] is not None:
         for data in content['words']:
             words[data['word']] = data['weight']
-    process_from_text(content['text'], content['maxCount'], words, content['textID'])
+    process_from_text(content['text'], content['maxCount'], content['minLength'], words, content['textID'])
     result = {'result': True}
     return jsonify(result)
 
